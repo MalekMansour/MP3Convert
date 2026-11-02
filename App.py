@@ -131,76 +131,140 @@ PAGE = r"""<!DOCTYPE html>
 <title>WAV to MP3</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-  :root { --bg:#111214; --card:#1b1d21; --line:#2c2f35; --text:#e8e8ea;
-          --muted:#8b8f98; --accent:#7c5cff; --ok:#3ecf8e; --err:#ff5c7a; }
+  :root {
+    --bg:#f5f5f7; --card:#ffffff; --line:#e7e7ea; --soft:#f2f2f5;
+    --text:#1d1d1f; --muted:#86868b; --accent:#5b5bf0; --accent-soft:#ececfd;
+    --ok:#1f9d63; --ok-soft:#e6f6ee; --err:#d93a52; --err-soft:#fdecef;
+    --shadow:0 1px 2px rgba(0,0,0,.04), 0 8px 30px rgba(0,0,0,.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:#0f0f11; --card:#18181b; --line:#27272c; --soft:#202024;
+      --text:#f2f2f4; --muted:#8e8e96; --accent:#8b8bff; --accent-soft:#25254a;
+      --ok:#4ccf8f; --ok-soft:#163326; --err:#ff6b81; --err-soft:#3a1a21;
+      --shadow:none;
+    }
+  }
   * { box-sizing:border-box; }
-  body { margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
-         background:var(--bg); color:var(--text); }
-  .wrap { max-width:760px; margin:40px auto; padding:0 20px; }
-  h1 { font-size:24px; margin:0 0 4px; }
-  .sub { color:var(--muted); margin:0 0 24px; font-size:14px; }
-  #drop { border:2px dashed var(--line); border-radius:14px; padding:44px 20px;
-          text-align:center; cursor:pointer; background:var(--card); transition:.15s; }
-  #drop.over { border-color:var(--accent); background:#221f33; }
-  #drop strong { color:var(--accent); }
-  .bar { display:flex; gap:10px; align-items:center; margin:18px 0; flex-wrap:wrap; }
-  .bar .spacer { flex:1; }
-  select, button { font:inherit; color:var(--text); background:var(--card);
-                   border:1px solid var(--line); border-radius:8px; padding:8px 14px; }
-  button { cursor:pointer; }
-  button.primary { background:var(--accent); border-color:var(--accent); font-weight:600; }
-  button:disabled { opacity:.4; cursor:not-allowed; }
-  #summary { color:var(--muted); font-size:14px; }
-  ul { list-style:none; padding:0; margin:0; }
-  li { display:flex; align-items:center; gap:12px; background:var(--card);
-       border:1px solid var(--line); border-radius:10px; padding:10px 14px; margin-bottom:8px; }
-  .name { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .status { font-size:13px; color:var(--muted); white-space:nowrap; }
-  .status.ok { color:var(--ok); } .status.err { color:var(--err); }
-  li a { color:var(--accent); text-decoration:none; font-size:13px; font-weight:600; }
-  progress { width:90px; height:6px; accent-color:var(--accent); }
+  body { margin:0; background:var(--bg); color:var(--text);
+         font:15px/1.5 Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+         -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:620px; margin:56px auto; padding:0 20px; }
+  header { margin-bottom:20px; }
+  h1 { font-size:22px; font-weight:650; letter-spacing:-.02em; margin:0; }
+  .sub { color:var(--muted); font-size:14px; margin:2px 0 0; }
+
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px;
+          box-shadow:var(--shadow); overflow:hidden; }
+
+  #drop { margin:16px; border:1.5px dashed var(--line); border-radius:12px;
+          padding:36px 20px; text-align:center; cursor:pointer; transition:.15s; }
+  #drop:hover, #drop.over { border-color:var(--accent); background:var(--accent-soft); }
+  #drop svg { color:var(--accent); margin-bottom:8px; }
+  #drop .big { font-weight:550; }
+  #drop .small { color:var(--muted); font-size:13px; margin-top:2px; }
+
+  .controls { display:flex; align-items:center; justify-content:space-between;
+              gap:12px; padding:0 16px 16px; flex-wrap:wrap; }
+  .label { color:var(--muted); font-size:13px; margin-right:8px; }
+  .seg { display:inline-flex; background:var(--soft); border-radius:9px; padding:3px; }
+  .seg button { border:0; background:none; color:var(--muted); font:inherit; font-size:13px;
+                padding:5px 11px; border-radius:7px; cursor:pointer; }
+  .seg button.on { background:var(--card); color:var(--text); font-weight:550;
+                   box-shadow:0 1px 2px rgba(0,0,0,.08); }
+  #summary { color:var(--muted); font-size:13px; }
+
+  #list { list-style:none; margin:0; padding:0; border-top:1px solid var(--line); }
+  #list:empty { display:none; }
+  #list li { display:flex; align-items:center; gap:12px; padding:12px 16px;
+             border-bottom:1px solid var(--line); position:relative; }
+  #list li:last-child { border-bottom:0; }
+  .icon { width:34px; height:34px; border-radius:9px; background:var(--soft); color:var(--muted);
+          display:grid; place-items:center; flex-shrink:0; font-size:10px; font-weight:700; letter-spacing:.04em; }
+  .done .icon { background:var(--accent-soft); color:var(--accent); }
+  .meta { flex:1; min-width:0; }
+  .name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:14px; }
+  .status { font-size:12px; color:var(--muted); }
+  .status.err { color:var(--err); }
+  .pill { font-size:12px; font-weight:550; padding:3px 9px; border-radius:99px; white-space:nowrap; }
+  .pill.ok { background:var(--ok-soft); color:var(--ok); }
+  .pill.err { background:var(--err-soft); color:var(--err); }
+  .dl { color:var(--muted); display:grid; place-items:center; width:30px; height:30px;
+        border-radius:8px; text-decoration:none; }
+  .dl:hover { background:var(--soft); color:var(--accent); }
+  .track { position:absolute; left:0; bottom:-1px; height:2px; background:var(--accent);
+           width:0; transition:width .2s; }
+  .track.busy { width:100%; animation:pulse 1.2s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity:.3; } }
+
+  footer { display:flex; justify-content:flex-end; gap:8px; padding:12px 16px;
+           border-top:1px solid var(--line); background:var(--soft); }
+  footer.hidden { display:none; }
+  .btn { font:inherit; font-size:14px; border-radius:9px; padding:8px 16px; cursor:pointer;
+         border:1px solid var(--line); background:var(--card); color:var(--text); }
+  .btn.primary { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:550; }
+  .btn:disabled { opacity:.45; cursor:not-allowed; }
+  .note { text-align:center; color:var(--muted); font-size:12px; margin-top:16px; }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>WAV &rarr; MP3 Converter</h1>
-  <p class="sub">Drop in as many .wav files as you like. Everything runs on your own computer.</p>
+  <header>
+    <h1>WAV to MP3</h1>
+    <p class="sub">Convert as many files as you want.</p>
+  </header>
 
-  <div id="drop">
-    <div style="font-size:34px">&#127925;</div>
-    <p>Drag &amp; drop WAV files here, or <strong>click to browse</strong></p>
-    <input id="picker" type="file" accept=".wav,audio/wav,audio/x-wav" multiple hidden>
+  <div class="card">
+    <div id="drop">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
+      <div class="big">Drop WAV files here</div>
+      <div class="small">or click to browse</div>
+      <input id="picker" type="file" accept=".wav,audio/wav,audio/x-wav" multiple hidden>
+    </div>
+
+    <div class="controls">
+      <div>
+        <span class="label">Quality</span>
+        <div class="seg" id="seg">
+          <button data-v="128">128</button>
+          <button data-v="192" class="on">192</button>
+          <button data-v="256">256</button>
+          <button data-v="320">320</button>
+        </div>
+        <span class="label" style="margin-left:6px">kbps</span>
+      </div>
+      <span id="summary"></span>
+    </div>
+
+    <ul id="list"></ul>
+
+    <footer id="footer" class="hidden">
+      <button id="clearBtn" class="btn">Clear</button>
+      <button id="allBtn" class="btn primary" disabled>Download all</button>
+    </footer>
   </div>
 
-  <div class="bar">
-    <label for="bitrate">Quality</label>
-    <select id="bitrate">
-      <option value="128">128 kbps</option>
-      <option value="192" selected>192 kbps</option>
-      <option value="256">256 kbps</option>
-      <option value="320">320 kbps (best)</option>
-    </select>
-    <span id="summary"></span>
-    <span class="spacer"></span>
-    <button id="clearBtn">Clear</button>
-    <button id="allBtn" class="primary" disabled>Download all (.zip)</button>
-  </div>
-
-  <ul id="list"></ul>
+  <p class="note">Files stay on your computer and are deleted when you close the app.</p>
 </div>
 
 <script>
-let session = crypto.randomUUID ? crypto.randomUUID()
-  : ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g,c=>(c^crypto.getRandomValues(new Uint8Array(1))[0]&15>>c/4).toString(16));
+const newId = () => crypto.randomUUID ? crypto.randomUUID()
+  : Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2,'0')).join('');
+let session = newId();
+let bitrate = '192';
 const queue = [];
 let active = 0, done = 0, failed = 0, total = 0;
 const PARALLEL = 3;
 
-const drop = document.getElementById('drop');
-const picker = document.getElementById('picker');
-const list = document.getElementById('list');
-const allBtn = document.getElementById('allBtn');
-const summary = document.getElementById('summary');
+const $ = id => document.getElementById(id);
+const drop = $('drop'), picker = $('picker'), list = $('list'), allBtn = $('allBtn'),
+      summary = $('summary'), footer = $('footer');
+
+$('seg').onclick = e => {
+  const b = e.target.closest('button'); if (!b) return;
+  [...$('seg').children].forEach(x => x.classList.toggle('on', x === b));
+  bitrate = b.dataset.v;
+};
 
 drop.onclick = () => picker.click();
 picker.onchange = () => { addFiles(picker.files); picker.value = ''; };
@@ -208,53 +272,65 @@ picker.onchange = () => { addFiles(picker.files); picker.value = ''; };
 ['dragleave','drop'].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.remove('over'); }));
 drop.addEventListener('drop', ev => addFiles(ev.dataTransfer.files));
 
-function fmtSize(b){ return b > 1048576 ? (b/1048576).toFixed(1)+' MB' : Math.max(1,Math.round(b/1024))+' KB'; }
+const fmtSize = b => b > 1048576 ? (b/1048576).toFixed(1)+' MB' : Math.max(1,Math.round(b/1024))+' KB';
+const DL_ICON = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12"/><path d="m7 11 5 5 5-5"/><path d="M5 20h14"/></svg>';
+
+function row(fileName){
+  const li = document.createElement('li');
+  li.innerHTML = `<div class="icon">WAV</div>
+    <div class="meta"><div class="name"></div><div class="status"></div></div>
+    <div class="track"></div>`;
+  li.querySelector('.name').textContent = fileName;
+  list.appendChild(li);
+  return li;
+}
 
 function addFiles(files){
   for (const file of files){
-    const li = document.createElement('li');
-    const name = document.createElement('span'); name.className='name'; name.textContent=file.name;
-    const status = document.createElement('span'); status.className='status';
-    li.append(name, status); list.appendChild(li);
+    const li = row(file.name);
+    const status = li.querySelector('.status');
     if (!file.name.toLowerCase().endsWith('.wav')){
-      status.textContent='Skipped (not .wav)'; status.classList.add('err'); continue;
+      status.textContent = 'Skipped, not a .wav file'; status.classList.add('err'); continue;
     }
-    status.textContent='Waiting...';
-    total++; queue.push({file, li, status});
+    status.textContent = 'Waiting';
+    total++; queue.push({file, li});
   }
   update(); pump();
 }
 
-function pump(){
-  while (active < PARALLEL && queue.length){ active++; upload(queue.shift()); }
-}
+function pump(){ while (active < PARALLEL && queue.length){ active++; upload(queue.shift()); } }
 
-function upload({file, li, status}){
+function upload({file, li}){
+  const status = li.querySelector('.status'), track = li.querySelector('.track');
   const fd = new FormData();
-  fd.append('session', session);
-  fd.append('bitrate', document.getElementById('bitrate').value);
-  fd.append('file', file);
-  const prog = document.createElement('progress'); prog.max = 100; prog.value = 0;
-  status.textContent = 'Uploading'; li.insertBefore(prog, status);
+  fd.append('session', session); fd.append('bitrate', bitrate); fd.append('file', file);
+  status.textContent = 'Uploading';
 
   const xhr = new XMLHttpRequest();
   xhr.open('POST', '/convert');
-  xhr.upload.onprogress = e => { if (e.lengthComputable) prog.value = e.loaded/e.total*100; };
-  xhr.upload.onload = () => { prog.removeAttribute('value'); status.textContent = 'Converting...'; };
+  xhr.upload.onprogress = e => { if (e.lengthComputable) track.style.width = (e.loaded/e.total*100)+'%'; };
+  xhr.upload.onload = () => { track.classList.add('busy'); status.textContent = 'Converting'; };
   xhr.onload = () => {
-    prog.remove();
+    track.remove();
     let data = {}; try { data = JSON.parse(xhr.responseText); } catch(e){}
     if (xhr.status === 200){
-      done++; status.textContent = fmtSize(data.size); status.classList.add('ok');
+      done++;
+      li.classList.add('done');
+      li.querySelector('.icon').textContent = 'MP3';
+      li.querySelector('.name').textContent = data.name;
+      status.textContent = fmtSize(data.size) + ' · ' + bitrate + ' kbps';
       const a = document.createElement('a');
-      a.href = `/download/${session}/${encodeURIComponent(data.name)}`; a.textContent = 'Download';
-      li.querySelector('.name').textContent = data.name; li.appendChild(a);
+      a.className = 'dl'; a.title = 'Download'; a.innerHTML = DL_ICON;
+      a.href = `/download/${session}/${encodeURIComponent(data.name)}`;
+      li.appendChild(a);
     } else {
-      failed++; status.textContent = 'Failed: ' + (data.error || xhr.status); status.classList.add('err');
+      failed++;
+      status.textContent = data.error || ('Error ' + xhr.status); status.classList.add('err');
+      li.insertAdjacentHTML('beforeend', '<span class="pill err">Failed</span>');
     }
     finish();
   };
-  xhr.onerror = () => { prog.remove(); failed++; status.textContent='Failed: connection error'; status.classList.add('err'); finish(); };
+  xhr.onerror = () => { track.remove(); failed++; status.textContent = 'Connection error'; status.classList.add('err'); finish(); };
   xhr.send(fd);
 }
 
@@ -262,17 +338,20 @@ function finish(){ active--; update(); pump(); }
 
 function update(){
   const pending = total - done - failed;
-  summary.textContent = total ? `${done}/${total} converted` + (failed ? `, ${failed} failed` : '') + (pending ? ` · ${pending} in progress` : '') : '';
+  summary.textContent = !total ? '' : (pending ? `${done} of ${total} converted` : `All done · ${done} converted`)
+    + (failed ? `, ${failed} failed` : '');
   allBtn.disabled = done === 0;
+  allBtn.textContent = done > 1 ? `Download all (${done})` : 'Download all';
+  footer.classList.toggle('hidden', list.children.length === 0);
 }
 
 allBtn.onclick = () => { window.location = `/download-all/${session}`; };
 
-document.getElementById('clearBtn').onclick = async () => {
-  if (active || queue.length){ if(!confirm('Files are still converting. Clear anyway?')) return; queue.length = 0; }
+$('clearBtn').onclick = async () => {
+  if (active || queue.length){ if (!confirm('Files are still converting. Clear anyway?')) return; queue.length = 0; }
   await fetch(`/clear/${session}`, {method:'POST'});
-  session = crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + 'a0b1c2d3';
-  list.innerHTML=''; done = failed = total = 0; update();
+  session = newId();
+  list.innerHTML = ''; done = failed = total = 0; update();
 };
 </script>
 </body>
